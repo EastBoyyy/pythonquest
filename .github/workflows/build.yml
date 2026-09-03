@@ -38,12 +38,12 @@ jobs:
           if git diff --quiet pythonquest.html; then
             echo "pythonquest.html à jour ✓"
           else
-            echo "changé=true" >> "$GITHUB_OUTPUT"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "pythonquest.html obsolète — régénéré automatiquement."
           fi
 
       - name: Publier la version régénérée (push sur main)
-        if: github.event_name == 'push' && steps.diff.outputs.changé == 'true'
+        if: github.event_name == 'push' && steps.diff.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -52,7 +52,7 @@ jobs:
           git push
 
       - name: Signaler une version obsolète (pull request)
-        if: github.event_name == 'pull_request' && steps.diff.outputs.changé == 'true'
+        if: github.event_name == 'pull_request' && steps.diff.outputs.changed == 'true'
         run: |
           echo "::error::pythonquest.html est obsolète : lance « python3 outils/construire.py » et commite le résultat."
           exit 1
