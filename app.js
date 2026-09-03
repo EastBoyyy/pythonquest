@@ -944,11 +944,19 @@ function majUICompte() {
 }
 
 /* À chaque changement de session (connexion, déconnexion, reconnexion auto). */
+let premierEvenementSession = true;
+
 async function appliquerSession(session) {
+  const estArrivée = premierEvenementSession;
+  premierEvenementSession = false;
   const utilisateur = session ? { id: session.user.id, email: session.user.email } : null;
   CLOUD.utilisateur = utilisateur;
   majUICompte();
-  if (!utilisateur) return;
+  if (!utilisateur) {
+    // À l'arrivée sur le site, sans session : on propose la connexion.
+    if (estArrivée && CLOUD.prêt) ouvrirModalCompte();
+    return;
+  }
   majIndicateurCloud('sync');
   try {
     const distant = await cloudChargerProgression(utilisateur.id);
@@ -1022,6 +1030,7 @@ function cablerAuthUI() {
     modeCompte = modeCompte === 'login' ? 'signup' : 'login';
     majFormulaireCompte();
   });
+  $('#auth-skip').addEventListener('click', fermerModalCompte);
   $('#auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('#auth-email').value.trim();

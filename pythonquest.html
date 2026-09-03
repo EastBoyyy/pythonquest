@@ -343,6 +343,8 @@ header {
 .modal input:focus { outline: none; border-color: var(--accent); }
 .modal .btn-primary { width: 100%; margin-top: 14px; }
 .modal .btn-ghost { width: 100%; margin-top: 8px; }
+#auth-skip { color: var(--text-dim); border-style: dashed; }
+#auth-skip:hover { color: var(--text); border-color: var(--accent); }
 .auth-error {
   background: rgba(248, 113, 113, .1); border: 1px solid rgba(248, 113, 113, .4);
   color: var(--red); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px;
@@ -510,6 +512,7 @@ footer {
         <button type="submit" class="btn-primary" id="auth-submit">Se connecter</button>
       </form>
       <button class="btn-ghost" id="auth-toggle">Pas encore de compte ? Crée-en un gratuitement</button>
+      <button class="btn-ghost" id="auth-skip">Continuer sans compte (progression locale)</button>
     </div>
   </div>
 
@@ -547,7 +550,7 @@ const CLOUD = {
 };
 
 function cloudConfiguré() {
-  return !!(window.CONFIG && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+  return !!(typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
 }
 
 function cloudInit() {
@@ -4278,11 +4281,19 @@ function majUICompte() {
 }
 
 /* À chaque changement de session (connexion, déconnexion, reconnexion auto). */
+let premierEvenementSession = true;
+
 async function appliquerSession(session) {
+  const estArrivée = premierEvenementSession;
+  premierEvenementSession = false;
   const utilisateur = session ? { id: session.user.id, email: session.user.email } : null;
   CLOUD.utilisateur = utilisateur;
   majUICompte();
-  if (!utilisateur) return;
+  if (!utilisateur) {
+    // À l'arrivée sur le site, sans session : on propose la connexion.
+    if (estArrivée && CLOUD.prêt) ouvrirModalCompte();
+    return;
+  }
   majIndicateurCloud('sync');
   try {
     const distant = await cloudChargerProgression(utilisateur.id);
@@ -4356,6 +4367,7 @@ function cablerAuthUI() {
     modeCompte = modeCompte === 'login' ? 'signup' : 'login';
     majFormulaireCompte();
   });
+  $('#auth-skip').addEventListener('click', fermerModalCompte);
   $('#auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('#auth-email').value.trim();

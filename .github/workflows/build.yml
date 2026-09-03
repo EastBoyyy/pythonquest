@@ -32,6 +32,9 @@ jobs:
       - name: Régénérer la version autonome (pythonquest.html)
         run: python3 outils/construire.py
 
+      - name: Vérifier la syntaxe du JavaScript généré
+        run: python3 outils/verifier_js.py
+
       - name: Comparer avec la version publiée
         id: diff
         run: |

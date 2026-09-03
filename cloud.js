@@ -10,7 +10,7 @@ const CLOUD = {
 };
 
 function cloudConfiguré() {
-  return !!(window.CONFIG && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+  return !!(typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
 }
 
 function cloudInit() {

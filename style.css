@@ -334,6 +334,8 @@ header {
 .modal input:focus { outline: none; border-color: var(--accent); }
 .modal .btn-primary { width: 100%; margin-top: 14px; }
 .modal .btn-ghost { width: 100%; margin-top: 8px; }
+#auth-skip { color: var(--text-dim); border-style: dashed; }
+#auth-skip:hover { color: var(--text); border-color: var(--accent); }
 .auth-error {
   background: rgba(248, 113, 113, .1); border: 1px solid rgba(248, 113, 113, .4);
   color: var(--red); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px;

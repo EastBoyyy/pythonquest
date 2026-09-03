@@ -46,3 +46,13 @@ html = html.replace("</body>", f"<script>\n{blocs_js}\n</script>\n</body>")
 
 SORTIE.write_text(html, encoding="utf-8")
 print(f"✅ {SORTIE.name} généré ({SORTIE.stat().st_size // 1024} Ko)")
+
+# Vérifie la syntaxe du JS inliné avant de considérer le build valide
+import shutil
+import subprocess
+import sys
+
+if shutil.which("node") or Path("/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc").exists():
+    r = subprocess.run([sys.executable, "outils/verifier_js.py"])
+    if r.returncode != 0:
+        sys.exit(r.returncode)
