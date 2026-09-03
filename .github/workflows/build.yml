@@ -1,0 +1,58 @@
+name: Build & validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # Ne relance pas le workflow pour le commit automatique du bot ([skip ci])
+    if: ${{ github.event_name != 'pull_request' || !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Valider la syntaxe des snippets Python
+        run: python3 outils/valider_snippets.py
+
+      - name: Valider les sorties des exercices
+        run: python3 outils/verifier_resultats.py
+
+      - name: Régénérer la version autonome (pythonquest.html)
+        run: python3 outils/construire.py
+
+      - name: Comparer avec la version publiée
+        id: diff
+        run: |
+          if git diff --quiet pythonquest.html; then
+            echo "pythonquest.html à jour ✓"
+          else
+            echo "changé=true" >> "$GITHUB_OUTPUT"
+            echo "pythonquest.html obsolète — régénéré automatiquement."
+          fi
+
+      - name: Publier la version régénérée (push sur main)
+        if: github.event_name == 'push' && steps.diff.outputs.changé == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pythonquest.html
+          git commit -m "Régénère pythonquest.html [skip ci]"
+          git push
+
+      - name: Signaler une version obsolète (pull request)
+        if: github.event_name == 'pull_request' && steps.diff.outputs.changé == 'true'
+        run: |
+          echo "::error::pythonquest.html est obsolète : lance « python3 outils/construire.py » et commite le résultat."
+          exit 1
