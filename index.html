@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PythonQuest — Apprends Python en réalisant de vrais projets</title>
+  <meta name="description" content="Parcours gamifié pour apprendre Python de débutant à pro, à travers de vrais projets.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== Barre de progression globale ===== -->
+  <div id="global-bar"><div id="global-bar-fill"></div></div>
+
+  <header>
+    <div class="brand" id="brand">
+      <span class="logo">🐍</span>
+      <div>
+        <h1>PythonQuest</h1>
+        <p id="tagline">De débutant à pro, un projet à la fois</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="xp-badge" id="badge-count" title="Succès débloqués — clique pour les voir">🏅 0/0</button>
+      <div class="xp-badge" id="xp-badge" title="Points d'expérience">⭐ 0 XP</div>
+      <nav id="main-nav">
+        <button class="nav-btn active" data-view="parcours">🗺️ Parcours</button>
+        <button class="nav-btn" data-view="succes">🏅 Succès</button>
+        <button class="nav-btn" data-view="playground">🖥️ Playground</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- ===== VUE PARCOURS ===== -->
+    <div id="view-parcours" class="view active">
+      <aside id="sidebar">
+        <div id="level-list"></div>
+        <div class="sidebar-footer">
+          <div id="py-status" class="py-status">⚙️ Interpréteur Python : en attente…</div>
+          <button id="reset-progress" class="btn-ghost btn-small" title="Efface toute ta progression">↺ Réinitialiser la progression</button>
+        </div>
+      </aside>
+
+      <section id="content">
+        <div id="level-dashboard"></div>
+        <div id="lesson-view"></div>
+        <div id="quiz-view"></div>
+        <div id="project-view"></div>
+      </section>
+    </div>
+
+    <!-- ===== VUE SUCCÈS ===== -->
+    <div id="view-succes" class="view"></div>
+
+    <!-- ===== VUE PLAYGROUND ===== -->
+    <div id="view-playground" class="view">
+      <div class="playground-head">
+        <h2>🖥️ Playground Python</h2>
+        <p>Écris du code Python et exécute-le directement dans ton navigateur (via Pyodide, un vrai interpréteur Python).</p>
+      </div>
+      <div class="playground-body">
+        <div class="pg-left">
+          <div class="pg-toolbar">
+            <select id="pg-samples" title="Exemples de programmes"></select>
+            <div class="pg-actions">
+              <button id="pg-run" class="btn-primary btn-small">▶️ Exécuter</button>
+              <button id="pg-copy" class="btn-ghost btn-small">📋 Copier</button>
+              <button id="pg-clear" class="btn-ghost btn-small">🗑️ Effacer</button>
+            </div>
+          </div>
+          <textarea id="pg-editor" spellcheck="false" placeholder="# Écris ton code Python ici…"></textarea>
+        </div>
+        <div class="pg-right">
+          <div class="pg-toolbar"><span>Sortie</span></div>
+          <pre id="pg-output" class="output">—</pre>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>PythonQuest — apprends en pratiquant. La progression est sauvegardée localement dans ton navigateur.</p>
+  </footer>
+
+  <!-- Interpréteur Python dans le navigateur (Pyodide) -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+
+  <!-- Contenu du parcours -->
+  <script src="data/niveau1.js"></script>
+  <script src="data/niveau2.js"></script>
+  <script src="data/niveau3.js"></script>
+  <script src="data/niveau4.js"></script>
+  <script src="data/index.js"></script>
+
+  <!-- Logique de l'application -->
+  <script src="app.js"></script>
+</body>
+</html>
