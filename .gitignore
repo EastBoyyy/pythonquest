@@ -1,6 +1,9 @@
 # Dossier de travail local (ne pas publier)
 .freebuff/
 
+# Fichiers système macOS
+.DS_Store
+
 # Archives de publication locales
 pythonquest-site.zip
 public/
