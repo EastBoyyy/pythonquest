@@ -309,6 +309,51 @@ header {
 .btn-success { background: var(--green); color: #06281a; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font); }
 .btn-success:hover { filter: brightness(1.08); }
 
+/* Compte & synchronisation */
+.compte { display: flex; align-items: center; gap: 8px; }
+.cloud-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: #555;
+  display: inline-block; flex-shrink: 0;
+}
+.cloud-dot[data-etat="ok"] { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.cloud-dot[data-etat="err"] { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.cloud-dot[data-etat="sync"] { background: var(--yellow); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+#btn-compte:disabled { opacity: 1; cursor: default; filter: none; }
+
+/* Modale de connexion */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(5, 8, 18, .72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.modal-overlay[hidden] { display: none; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 26px 28px; width: 100%; max-width: 380px; position: relative;
+}
+.modal h3 { font-size: 20px; margin-bottom: 6px; }
+.modal .modal-intro { color: var(--text-dim); font-size: 13.5px; margin-bottom: 16px; }
+.modal label { display: block; font-size: 12.5px; color: var(--text-dim); margin: 10px 0 4px; }
+.modal input {
+  width: 100%; background: var(--bg-code); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 14px; font-family: var(--font);
+}
+.modal input:focus { outline: none; border-color: var(--accent); }
+.modal .btn-primary { width: 100%; margin-top: 14px; }
+.modal .btn-ghost { width: 100%; margin-top: 8px; }
+.auth-error {
+  background: rgba(248, 113, 113, .1); border: 1px solid rgba(248, 113, 113, .4);
+  color: var(--red); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px;
+}
+.auth-error[hidden] { display: none; }
+.modal-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer;
+}
+.modal-close:hover { color: var(--text); }
+
 /* Succès */
 #view-succes { flex-direction: column; padding: 26px 30px 60px; }
 .succes-head h2 { font-size: 22px; margin-bottom: 4px; }
@@ -387,6 +432,11 @@ footer {
       </div>
     </div>
     <div class="header-right">
+      <div class="compte" id="compte" style="display:none">
+        <span class="cloud-dot" id="cloud-dot" data-etat="off" title="Sauvegarde en ligne"></span>
+        <button class="xp-badge" id="btn-compte">👤 Connexion</button>
+        <button class="btn-ghost btn-small" id="btn-deconnexion" style="display:none">Déconnexion</button>
+      </div>
       <button class="xp-badge" id="badge-count" title="Succès débloqués — clique pour les voir">🏅 0/0</button>
       <div class="xp-badge" id="xp-badge" title="Points d'expérience">⭐ 0 XP</div>
       <nav id="main-nav">
@@ -445,16 +495,132 @@ footer {
     </div>
   </main>
 
+  <!-- ===== MODALE DE CONNEXION ===== -->
+  <div id="auth-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <button class="modal-close" id="auth-close" title="Fermer">✕</button>
+      <h3 id="auth-titre">Se connecter</h3>
+      <p class="modal-intro" id="auth-intro">Retrouve ta progression en te connectant à ton compte.</p>
+      <form id="auth-form" autocomplete="on">
+        <label for="auth-email">Adresse e-mail</label>
+        <input type="email" id="auth-email" placeholder="ton@email.fr" required autocomplete="email">
+        <label for="auth-password">Mot de passe</label>
+        <input type="password" id="auth-password" placeholder="6 caractères minimum" minlength="6" required autocomplete="current-password">
+        <div class="auth-error" id="auth-error" hidden></div>
+        <button type="submit" class="btn-primary" id="auth-submit">Se connecter</button>
+      </form>
+      <button class="btn-ghost" id="auth-toggle">Pas encore de compte ? Crée-en un gratuitement</button>
+    </div>
+  </div>
+
   <footer>
-    <p>PythonQuest — apprends en pratiquant. La progression est sauvegardée localement dans ton navigateur.</p>
+    <p>PythonQuest — apprends en pratiquant. La progression est sauvegardée localement dans ton navigateur, et sur ton compte quand tu es connecté.</p>
   </footer>
 
   <!-- Interpréteur Python dans le navigateur (Pyodide) -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <!-- SDK Supabase : connexion & sauvegarde de la progression en ligne -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <!-- Contenu du parcours -->
+  
+  
+  
   <script>
 
+/* ============ Configuration de la synchronisation en ligne ============
+   Supabase (gratuit) : connexion par e-mail + sauvegarde de la progression.
+   Laisse ces deux valeurs vides pour une utilisation 100 % locale
+   (la progression reste alors dans le navigateur).                        */
+const CONFIG = {
+  SUPABASE_URL: '',         // ex : 'https://xxxx.supabase.co'
+  SUPABASE_ANON_KEY: '',    // clé publique « anon » (sans danger, protégée par RLS)
+};
+/* ============ Compte & synchronisation de la progression (Supabase) ============ */
+'use strict';
+
+/* État de la connexion cloud. Utilisé par app.js. */
+const CLOUD = {
+  prêt: false,          // config présente ET SDK chargé
+  client: null,
+  utilisateur: null,    // { id, email } — null si déconnecté
+  timer: null,          // débounce de sauvegarde
+};
+
+function cloudConfiguré() {
+  return !!(window.CONFIG && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+}
+
+function cloudInit() {
+  if (!cloudConfiguré()) return false;
+  try {
+    if (!window.supabase || !window.supabase.createClient) return false;
+    CLOUD.client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    CLOUD.prêt = true;
+    // Restaure la session (reconnexion automatique) et réagit aux changements.
+    CLOUD.client.auth.onAuthStateChange((_événement, session) => {
+      if (typeof appliquerSession === 'function') appliquerSession(session);
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function cloudSeConnecter(email, motDePasse) {
+  const { data, error } = await CLOUD.client.auth.signInWithPassword({ email, password: motDePasse });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function cloudCréerCompte(email, motDePasse) {
+  const { data, error } = await CLOUD.client.auth.signUp({ email, password: motDePasse });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function cloudSeDéconnecter() {
+  if (!CLOUD.prêt) return;
+  await CLOUD.client.auth.signOut();
+}
+
+async function cloudChargerProgression(userId) {
+  const { data, error } = await CLOUD.client
+    .from('profils')
+    .select('progress, updated_at')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? { progress: data.progress, updatedAt: data.updated_at } : null;
+}
+
+async function cloudSauvegarderProgression(userId, progress) {
+  const { error } = await CLOUD.client
+    .from('profils')
+    .upsert({ id: userId, progress, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
+async function cloudSupprimerProgression(userId) {
+  const { error } = await CLOUD.client
+    .from('profils')
+    .delete()
+    .eq('id', userId);
+  if (error) throw new Error(error.message);
+}
+
+/* Sauvegarde différée (débounce) pour ne pas écrire à chaque clic. */
+function cloudPlanifierSauvegarde(état) {
+  if (!CLOUD.prêt || !CLOUD.utilisateur || !état) return;
+  clearTimeout(CLOUD.timer);
+  CLOUD.timer = setTimeout(async () => {
+    try {
+      await cloudSauvegarderProgression(CLOUD.utilisateur.id, état);
+      if (typeof majIndicateurCloud === 'function') majIndicateurCloud('ok');
+    } catch (e) {
+      if (typeof majIndicateurCloud === 'function') majIndicateurCloud('err');
+    }
+  }, 1500);
+}
 /* ============ Niveau 1 — Débutant : Les fondations ============ */
 const NIVEAU1 = {
   id: 'debutant',
@@ -3166,10 +3332,6 @@ function compterEtapes() {
 }
 
 const TOTAL_ETAPES = compterEtapes();
-</script>
-
-  <!-- Logique de l'application -->
-  <script>
 /* ============ PythonQuest — logique de l'application ============ */
 'use strict';
 
@@ -3193,6 +3355,7 @@ function stateParDefaut() {
       bestStreak: 0,
       lastVisit: null,      // date locale YYYY-MM-DD de la dernière visite
     },
+    updatedAt: null,        // date de la dernière modification (pour la synchro cloud)
   };
 }
 
@@ -3206,7 +3369,10 @@ function loadState() {
 }
 
 function saveState() {
+  state.updatedAt = new Date().toISOString();
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  // Synchronisation vers le compte, si connecté (cloud.js) :
+  if (typeof cloudPlanifierSauvegarde === 'function') cloudPlanifierSauvegarde(state);
 }
 
 function addXp(n) {
@@ -4077,6 +4243,161 @@ function initPlayground() {
   });
 }
 
+/* ---------- Compte & synchronisation cloud ---------- */
+let modeCompte = 'login';   // 'login' ou 'signup'
+
+function majIndicateurCloud(etat) {
+  const dot = $('#cloud-dot');
+  if (!dot) return;
+  dot.dataset.etat = etat || 'off';
+}
+
+function majUICompte() {
+  const conteneur = $('#compte');
+  const btn = $('#btn-compte');
+  const btnDeconnexion = $('#btn-deconnexion');
+  if (!conteneur || !btn) return;
+  if (typeof cloudConfiguré !== 'function' || !cloudConfiguré()) {
+    conteneur.style.display = 'none';   // synchronisation non configurée : rien à afficher
+    return;
+  }
+  conteneur.style.display = '';
+  if (CLOUD.utilisateur) {
+    btn.innerHTML = '👤 ' + escapeHtml(CLOUD.utilisateur.email);
+    btn.disabled = true;
+    btn.title = 'Connecté — ta progression est sauvegardée sur ton compte';
+    btnDeconnexion.style.display = '';
+    majIndicateurCloud('ok');
+  } else {
+    btn.textContent = '👤 Connexion';
+    btn.disabled = false;
+    btn.title = '';
+    btnDeconnexion.style.display = 'none';
+    majIndicateurCloud('off');
+  }
+}
+
+/* À chaque changement de session (connexion, déconnexion, reconnexion auto). */
+async function appliquerSession(session) {
+  const utilisateur = session ? { id: session.user.id, email: session.user.email } : null;
+  CLOUD.utilisateur = utilisateur;
+  majUICompte();
+  if (!utilisateur) return;
+  majIndicateurCloud('sync');
+  try {
+    const distant = await cloudChargerProgression(utilisateur.id);
+    const localDate = state.updatedAt ? new Date(state.updatedAt).getTime() : 0;
+    const distDate = distant ? new Date(distant.updatedAt).getTime() : 0;
+    if (!distant) {
+      saveState();   // premier login : on pousse la progression locale
+      afficherNotification('☁️ Connecté ! Ta progression est maintenant sauvegardée sur ton compte.');
+    } else if (distDate > localDate) {
+      // La copie en ligne est plus récente : on la restaure.
+      state = Object.assign(stateParDefaut(), distant.progress);
+      saveState();
+      majHeader();
+      renderSidebar();
+      naviguer(navActuel);
+      afficherNotification('☁️ Progression restaurée depuis ton compte.');
+    } else {
+      saveState();   // la locale est plus récente (ou égale) : on la pousse
+      afficherNotification('☁️ Connecté ! Progression synchronisée avec ton compte.');
+    }
+    majIndicateurCloud('ok');
+  } catch (e) {
+    majIndicateurCloud('err');
+  }
+}
+
+function majFormulaireCompte() {
+  const titre = $('#auth-titre');
+  const submit = $('#auth-submit');
+  const bascule = $('#auth-toggle');
+  const intro = $('#auth-intro');
+  const erreur = $('#auth-error');
+  if (!titre) return;
+  erreur.hidden = true;
+  if (modeCompte === 'login') {
+    titre.textContent = 'Se connecter';
+    intro.textContent = 'Retrouve ta progression en te connectant à ton compte.';
+    submit.textContent = 'Se connecter';
+    bascule.textContent = 'Pas encore de compte ? Crée-en un gratuitement';
+  } else {
+    titre.textContent = 'Créer un compte';
+    intro.textContent = 'Crée un compte gratuit pour sauvegarder ta progression en ligne et la retrouver sur n\'importe quel appareil.';
+    submit.textContent = 'Créer le compte';
+    bascule.textContent = 'Déjà un compte ? Se connecter';
+  }
+}
+
+function ouvrirModalCompte() {
+  if (!CLOUD.prêt) {
+    afficherNotification('☁️ La synchronisation n\'est pas configurée sur ce site.');
+    return;
+  }
+  modeCompte = 'login';
+  majFormulaireCompte();
+  $('#auth-password').value = '';
+  $('#auth-modal').hidden = false;
+  $('#auth-email').focus();
+}
+
+function fermerModalCompte() {
+  $('#auth-modal').hidden = true;
+}
+
+function cablerAuthUI() {
+  $('#btn-compte').addEventListener('click', ouvrirModalCompte);
+  $('#auth-close').addEventListener('click', fermerModalCompte);
+  $('#auth-modal').addEventListener('click', (e) => {
+    if (e.target === $('#auth-modal')) fermerModalCompte();
+  });
+  $('#auth-toggle').addEventListener('click', () => {
+    modeCompte = modeCompte === 'login' ? 'signup' : 'login';
+    majFormulaireCompte();
+  });
+  $('#auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('#auth-email').value.trim();
+    const mdp = $('#auth-password').value;
+    const erreur = $('#auth-error');
+    const submit = $('#auth-submit');
+    erreur.hidden = true;
+    submit.disabled = true;
+    submit.textContent = '…';
+    try {
+      if (modeCompte === 'login') {
+        await cloudSeConnecter(email, mdp);
+        fermerModalCompte();
+      } else {
+        const data = await cloudCréerCompte(email, mdp);
+        if (data.session) {
+          fermerModalCompte();
+        } else {
+          // Confirmation par e-mail activée côté Supabase :
+          erreur.textContent = 'Compte créé ! Vérifie ta boîte mail et clique sur le lien de confirmation, puis connecte-toi.';
+          erreur.hidden = false;
+        }
+      }
+    } catch (ex) {
+      erreur.textContent = ex.message || 'Erreur inattendue.';
+      erreur.hidden = false;
+    }
+    submit.disabled = false;
+    submit.textContent = modeCompte === 'login' ? 'Se connecter' : 'Créer le compte';
+  });
+  $('#btn-deconnexion').addEventListener('click', async () => {
+    try {
+      await cloudSeDéconnecter();
+      CLOUD.utilisateur = null;
+      majUICompte();
+      afficherNotification('Déconnecté. Ta progression reste enregistrée sur ton compte.');
+    } catch (e) {
+      afficherNotification('Impossible de se déconnecter.');
+    }
+  });
+}
+
 /* ---------- Événements globaux ---------- */
 function init() {
   loadState();
@@ -4085,6 +4406,11 @@ function init() {
   renderSidebar();
   naviguer('debutant:dashboard');
   initPlayground();
+
+  // Compte & synchronisation (cloud.js) — fonctionne sans config : mode local seul
+  cloudInit();
+  majUICompte();
+  cablerAuthUI();
 
   $('#badge-count').addEventListener('click', () => montrerVue('succes'));
   $('#brand').addEventListener('click', () => {
@@ -4124,6 +4450,10 @@ function init() {
     if (confirm('Effacer toute ta progression (XP, leçons, quiz, projets) ?')) {
       state = stateParDefaut();
       saveState();
+      // Efface aussi la copie en ligne, si connecté
+      if (CLOUD.prêt && CLOUD.utilisateur) {
+        cloudSupprimerProgression(CLOUD.utilisateur.id).catch(() => {});
+      }
       majHeader();
       naviguer(navActuel.split(':')[0] + ':dashboard');
       renderSidebar();

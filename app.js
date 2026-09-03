@@ -21,6 +21,7 @@ function stateParDefaut() {
       bestStreak: 0,
       lastVisit: null,      // date locale YYYY-MM-DD de la dernière visite
     },
+    updatedAt: null,        // date de la dernière modification (pour la synchro cloud)
   };
 }
 
@@ -34,7 +35,10 @@ function loadState() {
 }
 
 function saveState() {
+  state.updatedAt = new Date().toISOString();
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  // Synchronisation vers le compte, si connecté (cloud.js) :
+  if (typeof cloudPlanifierSauvegarde === 'function') cloudPlanifierSauvegarde(state);
 }
 
 function addXp(n) {
@@ -905,6 +909,161 @@ function initPlayground() {
   });
 }
 
+/* ---------- Compte & synchronisation cloud ---------- */
+let modeCompte = 'login';   // 'login' ou 'signup'
+
+function majIndicateurCloud(etat) {
+  const dot = $('#cloud-dot');
+  if (!dot) return;
+  dot.dataset.etat = etat || 'off';
+}
+
+function majUICompte() {
+  const conteneur = $('#compte');
+  const btn = $('#btn-compte');
+  const btnDeconnexion = $('#btn-deconnexion');
+  if (!conteneur || !btn) return;
+  if (typeof cloudConfiguré !== 'function' || !cloudConfiguré()) {
+    conteneur.style.display = 'none';   // synchronisation non configurée : rien à afficher
+    return;
+  }
+  conteneur.style.display = '';
+  if (CLOUD.utilisateur) {
+    btn.innerHTML = '👤 ' + escapeHtml(CLOUD.utilisateur.email);
+    btn.disabled = true;
+    btn.title = 'Connecté — ta progression est sauvegardée sur ton compte';
+    btnDeconnexion.style.display = '';
+    majIndicateurCloud('ok');
+  } else {
+    btn.textContent = '👤 Connexion';
+    btn.disabled = false;
+    btn.title = '';
+    btnDeconnexion.style.display = 'none';
+    majIndicateurCloud('off');
+  }
+}
+
+/* À chaque changement de session (connexion, déconnexion, reconnexion auto). */
+async function appliquerSession(session) {
+  const utilisateur = session ? { id: session.user.id, email: session.user.email } : null;
+  CLOUD.utilisateur = utilisateur;
+  majUICompte();
+  if (!utilisateur) return;
+  majIndicateurCloud('sync');
+  try {
+    const distant = await cloudChargerProgression(utilisateur.id);
+    const localDate = state.updatedAt ? new Date(state.updatedAt).getTime() : 0;
+    const distDate = distant ? new Date(distant.updatedAt).getTime() : 0;
+    if (!distant) {
+      saveState();   // premier login : on pousse la progression locale
+      afficherNotification('☁️ Connecté ! Ta progression est maintenant sauvegardée sur ton compte.');
+    } else if (distDate > localDate) {
+      // La copie en ligne est plus récente : on la restaure.
+      state = Object.assign(stateParDefaut(), distant.progress);
+      saveState();
+      majHeader();
+      renderSidebar();
+      naviguer(navActuel);
+      afficherNotification('☁️ Progression restaurée depuis ton compte.');
+    } else {
+      saveState();   // la locale est plus récente (ou égale) : on la pousse
+      afficherNotification('☁️ Connecté ! Progression synchronisée avec ton compte.');
+    }
+    majIndicateurCloud('ok');
+  } catch (e) {
+    majIndicateurCloud('err');
+  }
+}
+
+function majFormulaireCompte() {
+  const titre = $('#auth-titre');
+  const submit = $('#auth-submit');
+  const bascule = $('#auth-toggle');
+  const intro = $('#auth-intro');
+  const erreur = $('#auth-error');
+  if (!titre) return;
+  erreur.hidden = true;
+  if (modeCompte === 'login') {
+    titre.textContent = 'Se connecter';
+    intro.textContent = 'Retrouve ta progression en te connectant à ton compte.';
+    submit.textContent = 'Se connecter';
+    bascule.textContent = 'Pas encore de compte ? Crée-en un gratuitement';
+  } else {
+    titre.textContent = 'Créer un compte';
+    intro.textContent = 'Crée un compte gratuit pour sauvegarder ta progression en ligne et la retrouver sur n\'importe quel appareil.';
+    submit.textContent = 'Créer le compte';
+    bascule.textContent = 'Déjà un compte ? Se connecter';
+  }
+}
+
+function ouvrirModalCompte() {
+  if (!CLOUD.prêt) {
+    afficherNotification('☁️ La synchronisation n\'est pas configurée sur ce site.');
+    return;
+  }
+  modeCompte = 'login';
+  majFormulaireCompte();
+  $('#auth-password').value = '';
+  $('#auth-modal').hidden = false;
+  $('#auth-email').focus();
+}
+
+function fermerModalCompte() {
+  $('#auth-modal').hidden = true;
+}
+
+function cablerAuthUI() {
+  $('#btn-compte').addEventListener('click', ouvrirModalCompte);
+  $('#auth-close').addEventListener('click', fermerModalCompte);
+  $('#auth-modal').addEventListener('click', (e) => {
+    if (e.target === $('#auth-modal')) fermerModalCompte();
+  });
+  $('#auth-toggle').addEventListener('click', () => {
+    modeCompte = modeCompte === 'login' ? 'signup' : 'login';
+    majFormulaireCompte();
+  });
+  $('#auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('#auth-email').value.trim();
+    const mdp = $('#auth-password').value;
+    const erreur = $('#auth-error');
+    const submit = $('#auth-submit');
+    erreur.hidden = true;
+    submit.disabled = true;
+    submit.textContent = '…';
+    try {
+      if (modeCompte === 'login') {
+        await cloudSeConnecter(email, mdp);
+        fermerModalCompte();
+      } else {
+        const data = await cloudCréerCompte(email, mdp);
+        if (data.session) {
+          fermerModalCompte();
+        } else {
+          // Confirmation par e-mail activée côté Supabase :
+          erreur.textContent = 'Compte créé ! Vérifie ta boîte mail et clique sur le lien de confirmation, puis connecte-toi.';
+          erreur.hidden = false;
+        }
+      }
+    } catch (ex) {
+      erreur.textContent = ex.message || 'Erreur inattendue.';
+      erreur.hidden = false;
+    }
+    submit.disabled = false;
+    submit.textContent = modeCompte === 'login' ? 'Se connecter' : 'Créer le compte';
+  });
+  $('#btn-deconnexion').addEventListener('click', async () => {
+    try {
+      await cloudSeDéconnecter();
+      CLOUD.utilisateur = null;
+      majUICompte();
+      afficherNotification('Déconnecté. Ta progression reste enregistrée sur ton compte.');
+    } catch (e) {
+      afficherNotification('Impossible de se déconnecter.');
+    }
+  });
+}
+
 /* ---------- Événements globaux ---------- */
 function init() {
   loadState();
@@ -913,6 +1072,11 @@ function init() {
   renderSidebar();
   naviguer('debutant:dashboard');
   initPlayground();
+
+  // Compte & synchronisation (cloud.js) — fonctionne sans config : mode local seul
+  cloudInit();
+  majUICompte();
+  cablerAuthUI();
 
   $('#badge-count').addEventListener('click', () => montrerVue('succes'));
   $('#brand').addEventListener('click', () => {
@@ -952,6 +1116,10 @@ function init() {
     if (confirm('Effacer toute ta progression (XP, leçons, quiz, projets) ?')) {
       state = stateParDefaut();
       saveState();
+      // Efface aussi la copie en ligne, si connecté
+      if (CLOUD.prêt && CLOUD.utilisateur) {
+        cloudSupprimerProgression(CLOUD.utilisateur.id).catch(() => {});
+      }
       majHeader();
       naviguer(navActuel.split(':')[0] + ':dashboard');
       renderSidebar();

@@ -17,7 +17,10 @@ de **débutant à pro** en Python, en réalisant **de vrais projets** à chaque 
 - **🖥️ Playground** : un vrai interpréteur Python (Pyodide) dans le navigateur
 - **🏅 20 succès (badges)** : première leçon, quiz parfait, série de jours, XP, projets… consultables
   sur la page « Succès » avec statistiques (série, exercices, programmes exécutés)
-- **Gamification** : XP, progression et succès sauvegardés localement (localStorage)
+- **👤 Comptes & synchronisation** : connexion par e-mail et sauvegarde de la progression
+  sur le compte (via Supabase, gratuit) — voir [SETUP_SUPABASE.md](SETUP_SUPABASE.md)
+- **Gamification** : XP, progression et succès sauvegardés localement (localStorage) et
+  en ligne quand on est connecté
 
 ## 🚀 Lancer l'application
 

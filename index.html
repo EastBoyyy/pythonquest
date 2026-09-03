@@ -22,6 +22,11 @@
       </div>
     </div>
     <div class="header-right">
+      <div class="compte" id="compte" style="display:none">
+        <span class="cloud-dot" id="cloud-dot" data-etat="off" title="Sauvegarde en ligne"></span>
+        <button class="xp-badge" id="btn-compte">👤 Connexion</button>
+        <button class="btn-ghost btn-small" id="btn-deconnexion" style="display:none">Déconnexion</button>
+      </div>
       <button class="xp-badge" id="badge-count" title="Succès débloqués — clique pour les voir">🏅 0/0</button>
       <div class="xp-badge" id="xp-badge" title="Points d'expérience">⭐ 0 XP</div>
       <nav id="main-nav">
@@ -80,12 +85,36 @@
     </div>
   </main>
 
+  <!-- ===== MODALE DE CONNEXION ===== -->
+  <div id="auth-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <button class="modal-close" id="auth-close" title="Fermer">✕</button>
+      <h3 id="auth-titre">Se connecter</h3>
+      <p class="modal-intro" id="auth-intro">Retrouve ta progression en te connectant à ton compte.</p>
+      <form id="auth-form" autocomplete="on">
+        <label for="auth-email">Adresse e-mail</label>
+        <input type="email" id="auth-email" placeholder="ton@email.fr" required autocomplete="email">
+        <label for="auth-password">Mot de passe</label>
+        <input type="password" id="auth-password" placeholder="6 caractères minimum" minlength="6" required autocomplete="current-password">
+        <div class="auth-error" id="auth-error" hidden></div>
+        <button type="submit" class="btn-primary" id="auth-submit">Se connecter</button>
+      </form>
+      <button class="btn-ghost" id="auth-toggle">Pas encore de compte ? Crée-en un gratuitement</button>
+    </div>
+  </div>
+
   <footer>
-    <p>PythonQuest — apprends en pratiquant. La progression est sauvegardée localement dans ton navigateur.</p>
+    <p>PythonQuest — apprends en pratiquant. La progression est sauvegardée localement dans ton navigateur, et sur ton compte quand tu es connecté.</p>
   </footer>
 
   <!-- Interpréteur Python dans le navigateur (Pyodide) -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <!-- SDK Supabase : connexion & sauvegarde de la progression en ligne -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Configuration & synchronisation cloud -->
+  <script src="data/config.js"></script>
+  <script src="cloud.js"></script>
 
   <!-- Contenu du parcours -->
   <script src="data/niveau1.js"></script>

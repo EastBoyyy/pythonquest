@@ -300,6 +300,51 @@ header {
 .btn-success { background: var(--green); color: #06281a; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font); }
 .btn-success:hover { filter: brightness(1.08); }
 
+/* Compte & synchronisation */
+.compte { display: flex; align-items: center; gap: 8px; }
+.cloud-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: #555;
+  display: inline-block; flex-shrink: 0;
+}
+.cloud-dot[data-etat="ok"] { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.cloud-dot[data-etat="err"] { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.cloud-dot[data-etat="sync"] { background: var(--yellow); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+#btn-compte:disabled { opacity: 1; cursor: default; filter: none; }
+
+/* Modale de connexion */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(5, 8, 18, .72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.modal-overlay[hidden] { display: none; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 26px 28px; width: 100%; max-width: 380px; position: relative;
+}
+.modal h3 { font-size: 20px; margin-bottom: 6px; }
+.modal .modal-intro { color: var(--text-dim); font-size: 13.5px; margin-bottom: 16px; }
+.modal label { display: block; font-size: 12.5px; color: var(--text-dim); margin: 10px 0 4px; }
+.modal input {
+  width: 100%; background: var(--bg-code); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; font-size: 14px; font-family: var(--font);
+}
+.modal input:focus { outline: none; border-color: var(--accent); }
+.modal .btn-primary { width: 100%; margin-top: 14px; }
+.modal .btn-ghost { width: 100%; margin-top: 8px; }
+.auth-error {
+  background: rgba(248, 113, 113, .1); border: 1px solid rgba(248, 113, 113, .4);
+  color: var(--red); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px;
+}
+.auth-error[hidden] { display: none; }
+.modal-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer;
+}
+.modal-close:hover { color: var(--text); }
+
 /* Succès */
 #view-succes { flex-direction: column; padding: 26px 30px 60px; }
 .succes-head h2 { font-size: 22px; margin-bottom: 4px; }
